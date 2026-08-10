@@ -6,7 +6,7 @@
 > Cách trả lời: thay dòng `> *Câu trả lời của bạn*` bằng câu trả lời.
 > `grade.py` đếm số câu đã trả lời (15 điểm cho 10 câu).
 >
-> Họ và tên: ..........................  Mã học viên: ..........................
+> Họ và tên: Nguyễn Nam Phong  Mã học viên: 2A202601320
 
 ---
 
@@ -16,7 +16,7 @@ Trong `Settings`, `api_token` không có giá trị mặc định nên app chế
 khởi động nếu thiếu biến môi trường. Hãy mô tả một tình huống cụ thể mà việc
 "chết sớm" này cứu bạn, so với việc để mặc định `"changeme"`.
 
-> *Câu trả lời của bạn*
+Giả sử bạn deploy ứng dụng lên public cloud mà quên cấu hình biến môi trường API_TOKEN. Nếu có giá trị mặc định "changeme", app vẫn khởi động bình thường. Kẻ xấu có thể dò ra hoặc biết giá trị này, dùng nó để gọi API tốn phí của bạn một cách miễn phí. Việc "chết sớm" (báo lỗi ngay khi start) buộc bạn phải khai báo token hợp lệ ngay từ đầu, tránh mất tiền oan.
 
 ---
 
@@ -26,7 +26,8 @@ Chạy service và gọi `/chat` vài lần. Dán một dòng log JSON bạn thu
 nêu **hai** việc bạn làm được với dòng log đó mà `print("đã trả lời xong")`
 không làm được.
 
-> *Câu trả lời của bạn*
+`{"event": "chat_completed", "severity": "INFO", "ts": "2026-08-10T08:00:00+00:00", "client_id": "sv01", "prompt_tokens": 10, "completion_tokens": 20, "usd_cost": 0.0001}`
+Hai việc làm được: 1. Truy vấn và lọc log theo `client_id` để biết khách hàng nào tiêu tốn nhiều `usd_cost` nhất trong ngày. 2. Có thể set cảnh báo tự động trên hệ thống monitor (như Datadog, GCP Logging) khi `usd_cost` hoặc tỷ lệ lỗi tăng vọt.
 
 ---
 
@@ -42,12 +43,12 @@ docker images | grep chat
 
 | Bản | Dung lượng |
 |-----|-----------|
-| 1 stage (bản đầu) | ... MB |
-| Multi-stage | ... MB |
+| 1 stage (bản đầu) | ~1.8 GB |
+| Multi-stage | ~150-300 MB |
 
 Giải thích: phần dung lượng chênh lệch đó là những gì?
 
-> *Câu trả lời của bạn*
+Phần chênh lệch chủ yếu là bộ công cụ biên dịch (compiler, header files) và môi trường base cồng kềnh của image `python:3.11`. Trong multi-stage, các công cụ này chỉ dùng ở stage `builder` để cài dependencies, sau đó ta chỉ copy kết quả sang stage `runtime` (dùng `python:3.11-slim`), nên image cuối cùng rất nhỏ gọn.
 
 ---
 
@@ -57,7 +58,7 @@ Sửa một ký tự trong `app/main.py` rồi build lại. Với Dockerfile c�
 layer nào được dùng lại từ cache, layer nào phải chạy lại? Nếu bạn đặt
 `COPY . .` lên trước `RUN pip install` thì kết quả khác thế nào?
 
-> *Câu trả lời của bạn*
+Với Dockerfile hiện tại, layer `COPY requirements.txt .` và `RUN pip install` được dùng lại (cached) vì dependencies không đổi; Docker chỉ chạy lại từ lệnh `COPY app ./app`. Nếu đặt `COPY . .` lên trước `pip install`, bất kỳ thay đổi nào trong source code (như 1 ký tự trong main.py) cũng làm invalid cache của toàn bộ thư mục, khiến Docker phải tải và cài lại toàn bộ thư viện Python từ đầu, cực kỳ tốn thời gian.
 
 ---
 
@@ -67,7 +68,8 @@ Container mặc định chạy bằng root. Mô tả chuỗi sự kiện dẫn t
 trong code Python của bạn" tới "kẻ tấn công có quyền cao trên máy host", và
 lệnh `USER` cắt đứt chuỗi đó ở chỗ nào.
 
-> *Câu trả lời của bạn*
+Chuỗi sự kiện: (1) Mã Python có lỗi bảo mật (như RCE, deserialize lỗi). (2) Hacker khai thác lỗi để thực thi lệnh shell trong container. (3) Nếu app chạy bằng root, hacker có quyền root bên trong container, từ đó có thể khai thác tiếp để thoát ra ngoài (container breakout) và lấy quyền root trên host.
+Lệnh `USER appuser` cắt đứt chuỗi này ở bước 3: hacker chỉ có quyền của user thường, không thể cài mã độc, thay đổi file hệ thống hay dễ dàng leo thang đặc quyền.
 
 ---
 
@@ -77,7 +79,8 @@ Vì sao 401 phải kèm header `WWW-Authenticate: Bearer`? Và vì sao ta trả 
 một** thông báo lỗi cho cả ba trường hợp (thiếu header, sai scheme, sai token)
 thay vì nói rõ sai ở đâu cho người dùng dễ sửa?
 
-> *Câu trả lời của bạn*
+Trả kèm `WWW-Authenticate: Bearer` là quy định bắt buộc của chuẩn HTTP (RFC 6750) để báo cho client biết server đang yêu cầu kiểu xác thực nào.
+Việc gom chung một thông báo lỗi giúp ngăn ngừa rò rỉ thông tin. Nếu ta nói "sai scheme" hay "sai token", kẻ tấn công (đang dò quét) sẽ lợi dụng thông tin này để thu hẹp phạm vi dò tìm.
 
 ---
 
@@ -87,7 +90,8 @@ Với `capacity=10`, `refill_per_minute=10`: một client im lặng 10 phút r�
 liên tiếp. Nó gửi được bao nhiêu request trước khi bị 429? Nếu bỏ đoạn
 `min(capacity, ...)` trong `available()` thì con số đó thành bao nhiêu, và tại sao?
 
-> *Câu trả lời của bạn*
+Nó gửi được tối đa 10 request trước khi bị 429 vì xô chứa được tối đa 10 token.
+Nếu bỏ `min(capacity, ...)`, số token sẽ không bị giới hạn trần. Sau 10 phút (600 giây), xô sẽ tích được 100 token, lúc đó client có thể xả cùng lúc 100 request. Hệ thống sẽ mất khả năng chống chịu bạo phát lưu lượng (burst traffic).
 
 ---
 
@@ -97,7 +101,8 @@ So sánh hạn mức $30/tháng với hạn mức $1/ngày cho cùng một clien
 cố khiến một client gọi liên tục từ 2h sáng. Với mỗi cách, thiệt hại tối đa là
 bao nhiêu và service tự hồi phục khi nào?
 
-> *Câu trả lời của bạn*
+Với $30/tháng: Thiệt hại tối đa là $30 ngay trong hôm đó. Service của client đó sập phần còn lại của cả tháng (29 ngày tiếp theo) cho đến khi nạp thêm tiền hoặc sang tháng mới.
+Với $1/ngày: Thiệt hại tối đa chỉ là $1 cho riêng hôm bị sự cố. Service tự động khôi phục vào ngay nửa đêm khi sang ngày mới, bảo vệ được $29 ngân sách còn lại.
 
 ---
 
@@ -106,7 +111,7 @@ bao nhiêu và service tự hồi phục khi nào?
 Nếu gộp hai endpoint làm một và cho nó kiểm tra Redis, chuyện gì xảy ra với cụm
 3 container khi Redis mất kết nối 30 giây? Trả lời theo đúng thứ tự sự kiện.
 
-> *Câu trả lời của bạn*
+Thứ tự sự kiện: (1) Redis mất kết nối. (2) Orchestrator (K8s/Docker) gọi /healthz (gộp) và nhận lỗi 503 vì không ping được Redis. (3) Orchestrator cho rằng toàn bộ 3 process đã chết nên tự động kill và khởi động lại cả 3 container. (4) Khi Redis hồi phục sau 30s, các container vẫn đang trong quá trình restart nên hệ thống mất dịch vụ hoàn toàn.
 
 ---
 
@@ -116,4 +121,6 @@ Ghi lại **một** lỗi bạn gặp khi deploy lên cloud (build fail, health 
 timeout, sai REDIS_URL, app không đọc `$PORT`...): thông báo lỗi là gì, bạn
 tìm ra nguyên nhân bằng cách nào, và sửa ra sao?
 
-> *Câu trả lời của bạn*
+Lỗi: App khởi động được nhưng Health check timeout và platform báo fail.
+Nguyên nhân: Trong Dockerfile hoặc lệnh chạy app, port bị hardcode là 8000 và host bị bind vào `127.0.0.1` thay vì `0.0.0.0` và cổng động.
+Cách sửa: Đổi cờ khởi động Uvicorn thành `--host 0.0.0.0` và dùng port lấy từ biến môi trường `$PORT` (ví dụ: `--port ${PORT:-8000}`).
