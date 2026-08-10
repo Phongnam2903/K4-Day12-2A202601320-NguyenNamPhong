@@ -41,6 +41,7 @@ jobs:
         run: |
           echo "Deploying with token: ${{ secrets.RAILWAY_TOKEN }}"
       - name: Smoke test
+        if: vars.PUBLIC_URL != ''
         run: |
           sleep 45
           curl -fsS "${{ vars.PUBLIC_URL }}/healthz"
