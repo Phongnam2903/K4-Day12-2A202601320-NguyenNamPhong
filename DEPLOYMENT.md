@@ -79,6 +79,8 @@ Service được deploy trên Render. Kết quả live cần lưu kèm ảnh ch�
 - `GET /ready` trả 200.
 - `POST /ask` không có Bearer token trả 401.
 - `POST /ask` có Bearer token hợp lệ trả 200.
+
+Log đã loại bỏ thông tin bí mật được lưu tại `screenshots/live-endpoints.txt`.
 ```
 
 ## Ảnh Chụp Màn Hình

@@ -1,0 +1,21 @@
+Cloud endpoint verification
+Date: 2026-08-10
+Platform: Render
+Base URL: https://day12-chat-tjqf.onrender.com
+
+GET /health
+Status: 200 OK
+Body: {"status":"ok","service":"day12-chat-service","version":"1.0.0"}
+
+GET /ready
+Status: 200 OK
+Body: {"status":"ready","redis":true}
+
+POST /ask without Authorization header
+Status: 401 Unauthorized
+
+POST /ask with a valid Bearer token
+Status: 200 OK
+Result: Response body contained a non-empty reply and client_id "cp5-evidence".
+
+Security note: The Bearer token is intentionally omitted from this evidence file.
