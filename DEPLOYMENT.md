@@ -1,106 +1,94 @@
 # Thông Tin Deploy — Checkpoint 5
 
-> Điền file này sau khi deploy xong. `pytest tests/test_cp5.py` đọc file này
-> để tìm địa chỉ service của bạn và gọi thử.
->
-> **Chỉ ghi TÊN biến môi trường, tuyệt đối không dán giá trị token vào đây.**
-> Repo này công khai — dán token vào là mất token.
-
-## Thông Tin Học Viên
+## Thông tin học viên
 
 | Mục | Nội dung |
-|-----|----------|
+| --- | --- |
 | Họ và tên | Nguyễn Nam Phong |
 | Mã học viên | 2A202601320 |
-| Repo | K4-Day12-2A202601320-NguyenNamPhong |
+| Repository | `K4-Day12-2A202601320-NguyenNamPhong` |
 
-## Service
+## Thông tin triển khai
 
 | Mục | Nội dung |
-|-----|----------|
+| --- | --- |
+| Nền tảng | Render |
 | Public URL | https://day12-chat-tjqf.onrender.com |
-| Platform | Render |
+| Blueprint | `day12-nguyen-nam-phong` |
+| Web service | `day12-chat` — Docker — Deployed |
+| Data service | `day12-chat-redis` — Render Key Value (Valkey 8) — Available |
+| Region | Singapore |
+| Nhánh deploy | `main` |
 | Ngày deploy | 2026-08-10 |
 
-## Biến Môi Trường Đã Set Trên Cloud
+## Biến môi trường trên Render
 
-Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
+Chỉ liệt kê tên biến và nguồn cấu hình; không lưu giá trị bí mật trong repository.
 
-| Biến | Đã set | Ghi chú |
-|------|--------|---------|
-| `PORT` | ✅ | platform tự gán |
-| `API_TOKEN` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | Render Key Value, liên kết bằng internal connection string |
-| `BUCKET_CAPACITY` | ✅ | 10 |
-| `REFILL_PER_MINUTE` | ✅ | 10 |
-| `DAILY_BUDGET_USD` | ✅ | 1.0 |
-| `LOG_LEVEL` | ✅ | INFO |
+| Biến | Trạng thái | Nguồn |
+| --- | --- | --- |
+| `PORT` | Đã cấu hình | Render tự cấp |
+| `API_TOKEN` | Đã cấu hình | Secret trên Render Dashboard |
+| `REDIS_URL` | Đã cấu hình | Internal connection string của Render Key Value |
+| `BUCKET_CAPACITY` | Đã cấu hình | `render.yaml` |
+| `REFILL_PER_MINUTE` | Đã cấu hình | `render.yaml` |
+| `DAILY_BUDGET_USD` | Đã cấu hình | `render.yaml` |
+| `LOG_LEVEL` | Đã cấu hình | `render.yaml` |
 
-## Lệnh Kiểm Tra
-
-Thay `<URL>` bằng Public URL ở trên:
+## Kiểm tra endpoint live
 
 ```bash
-# 1. Liveness — mong đợi 200 {"status":"ok"}
-curl -i <URL>/health
+BASE_URL="https://day12-chat-tjqf.onrender.com"
 
-# 2. Readiness — mong đợi 200 {"status":"ready"} (đã nối được Redis)
-curl -i <URL>/ready
+# 1. Liveness — mong đợi 200 OK
+curl -i "$BASE_URL/health"
 
-# 3. Không có token — mong đợi 401 kèm header WWW-Authenticate
-curl -i -X POST <URL>/ask \
+# 2. Readiness — mong đợi 200 OK và redis=true
+curl -i "$BASE_URL/ready"
+
+# 3. Không có API token — mong đợi 401 Unauthorized
+curl -i -X POST "$BASE_URL/ask" \
   -H "Content-Type: application/json" \
   -d '{"message":"Hello"}'
 
-# 4. Có token — mong đợi 200 kèm câu trả lời
-curl -i -X POST <URL>/ask \
+# 4. Có API token hợp lệ — mong đợi 200 OK
+# DEPLOY_API_TOKEN chỉ đặt trong môi trường local, không ghi vào repository.
+curl -i -X POST "$BASE_URL/ask" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $API_TOKEN" \
-  -H "X-Client-Id: sv-test" \
-  -d '{"message":"Deploy là gì?"}'
-
-# 5. Rate limit — gọi 15 lần, những lần cuối phải trả 429
-for i in $(seq 1 15); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST <URL>/ask \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $API_TOKEN" \
-    -H "X-Client-Id: sv-test" \
-    -d '{"message":"test"}'
-done; echo
+  -H "Authorization: Bearer $DEPLOY_API_TOKEN" \
+  -H "X-Client-Id: cp5-evidence" \
+  -d '{"message":"Kiểm tra CP5"}'
 ```
 
-## Kết Quả Chạy Thật
+## Kết quả xác minh thực tế
 
-Dán output của các lệnh trên vào đây:
+| Request | Kết quả |
+| --- | --- |
+| `GET /health` | `200 OK` — service đang hoạt động |
+| `GET /ready` | `200 OK` — Redis/Valkey đã kết nối (`redis: true`) |
+| `POST /ask` không có token | `401 Unauthorized` |
+| `POST /ask` có Bearer token hợp lệ | `200 OK` — trả về nội dung `reply` |
 
+Checkpoint Cloud đã được kiểm tra trực tiếp trên public URL. Token xác thực không xuất hiện trong tài liệu hoặc log.
+
+## Minh chứng
+
+- `screenshots/dashboard.png`: Render Blueprint hiển thị `day12-chat` ở trạng thái **Deployed** và `day12-chat-redis` ở trạng thái **Available**.
+- `screenshots/live-endpoints.txt`: log bốn request live, đã loại bỏ token.
+
+## Chạy checkpoint
+
+Trong `.env` local:
+
+```env
+LOCAL_FALLBACK=false
+DEPLOY_API_TOKEN=<cùng giá trị API_TOKEN đang dùng trên Render>
 ```
-Service được deploy trên Render. Kết quả live cần lưu kèm ảnh chụp:
-- `GET /health` trả 200.
-- `GET /ready` trả 200.
-- `POST /ask` không có Bearer token trả 401.
-- `POST /ask` có Bearer token hợp lệ trả 200.
 
-Log đã loại bỏ thông tin bí mật được lưu tại `screenshots/live-endpoints.txt`.
+Sau đó chạy:
+
+```bash
+pytest tests/test_cp5.py -v
 ```
 
-## Ảnh Chụp Màn Hình
-
-Đặt ảnh trong thư mục `screenshots/`:
-
-- `screenshots/dashboard.png` — trang quản lý service trên platform
-- `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
-
----
-
-## Nếu Dùng Phương Án Dự Phòng
-
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
-
-1. Đặt `LOCAL_FALLBACK=true` trong `.env`
-2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
-3. Chụp màn hình vào `screenshots/`
-4. Chạy `pytest tests/test_cp5.py -v` — bộ test sẽ tự chuyển sang kiểm tra
-   `http://localhost:8000`
-5. Ghi rõ lý do không deploy được vào phần dưới đây:
-
-Không áp dụng — service đã được deploy công khai trên Render.
+Kết quả đã xác minh: **9 passed, 4 skipped**. Bốn test bị bỏ qua thuộc nhánh Local Fallback vì bài sử dụng deployment Cloud thật trên Render.
