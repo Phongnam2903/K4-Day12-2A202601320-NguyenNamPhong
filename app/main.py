@@ -78,6 +78,7 @@ class ChatRequest(BaseModel):
 # ─────────────────────────────────────────────────────────────
 # Health & readiness
 # ─────────────────────────────────────────────────────────────
+@app.get("/health")
 @app.get("/healthz")
 def healthz():
     """Liveness probe — process còn sống không?
@@ -97,6 +98,7 @@ def healthz():
     return {"status": "ok", "service": SERVICE_NAME, "version": SERVICE_VERSION}
 
 
+@app.get("/ready")
 @app.get("/readyz")
 def readyz(store: ChatStore = Depends(get_store)):
     """Readiness probe — đã sẵn sàng nhận traffic chưa?
@@ -119,6 +121,7 @@ def readyz(store: ChatStore = Depends(get_store)):
 # ─────────────────────────────────────────────────────────────
 # Endpoint chính
 # ─────────────────────────────────────────────────────────────
+@app.post("/ask")
 @app.post("/chat")
 def chat(
     payload: ChatRequest,
